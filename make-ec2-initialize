@@ -2,8 +2,10 @@
 
 =begin
 
-Generate an ec2 user data file using the specified auth file
+Generate an initialization file using the specified auth file
 and stated requirements.
+
+The resulting file can be run as a user-data script or manually.
 
 =cut
 
