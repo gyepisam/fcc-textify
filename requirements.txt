@@ -8,3 +8,4 @@ curl
 poppler-utils
 parallel
 runit
+git

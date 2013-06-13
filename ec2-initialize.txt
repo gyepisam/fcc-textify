@@ -20,7 +20,7 @@ apt-get -y upgrade
 
 apt-get install -y $PACKAGES
 
-#git pull https://....fcc-textify
+git clone https://github.com/gyepisam/fcc-textify
 
 #Worker key
 install -D -m 0600 /dev/stdin fcc-textify/auth <<EOS
@@ -54,4 +54,4 @@ mkdir -p \$d
 svlogd \$d
 EOS
 
-#ln -s extract-job /etc/service/extract-job
+ln -s extract-job /etc/service/extract-job
