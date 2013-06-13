@@ -329,6 +329,6 @@ if __name__ == "__main__":
     try:
         limit = sys.argv[2]
     except:
-        pass
+        limit = None 
 
     action(limit)
