@@ -2,3 +2,4 @@
 config
 ec2-initialize
 auth
+*.pyc
