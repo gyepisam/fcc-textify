@@ -59,7 +59,7 @@ install -D -m 0755 /dev/stdin runit/log/run <<EOS
 #!/bin/sh
 d=$HOME/logs
 mkdir -p \$d
-svlogd \$d
+exec svlogd \$d
 EOS
 
 ln -s $PWD/runit /etc/service/textify
