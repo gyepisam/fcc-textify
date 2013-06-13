@@ -1,0 +1,10 @@
+python
+python-lxml 
+python-psycopg2
+python-boto
+unpaper
+tesseract-ocr
+curl
+poppler-utils
+parallel
+runit

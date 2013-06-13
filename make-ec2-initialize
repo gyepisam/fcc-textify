@@ -1,0 +1,26 @@
+#!/usr/bin/perl
+
+=begin
+
+Generate an ec2 user data file using the specified auth file
+and stated requirements.
+
+=cut
+
+use strict;
+
+my $auth = slurp(shift @ARGV);
+my $template = slurp('ec2-initialize.txt');
+my $package = slurp('requirements.txt');
+
+$template =~ s/%AUTH%/$auth/;
+$template =~ s/%PACKAGES%/$package/;
+
+print $template;
+
+sub slurp {
+    my $f = shift;
+    local $/;
+    open(F, $f) or die "cannot open $f. $!\n";
+    <F>
+}

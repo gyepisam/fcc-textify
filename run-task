@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# task runner
+# call it like this
+#   run-task aws-auth/injector.key inject 1
+# to inject 1 message into the jobs system.
+# omit the 1 to inject all eligible messages
+# call it like this to fetch extracted data
+#   run-task aws-auth/collector.key collect 1
+# call it like this to extract
+#
+#   run-task aws-auth/worker.key extract 1
+auth=$1
+
+if test -z "$auth" ; then
+    echo "missing auth file argument"
+    exit 1
+fi
+
+if ! test -f "$auth" ; then
+    echo "auth file $auth does not exist"
+    exit 1
+fi
+
+shift
+
+env AWS_ACCESS_KEY_ID="$(sed -n 1p $auth)" \
+    AWS_SECRET_ACCESS_KEY="$(sed -n 2p $auth)" \
+    python task.py "$@"

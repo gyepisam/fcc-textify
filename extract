@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# download and ocr a pdf file
+
+set -e
+
+url=$1
+workdir=${2:-./}
+
+cd $workdir
+
+docid=$(echo $url|cut -f2 -d=)
+
+pdf="${docid}.pdf"
+
+if ! test -f $pdf ; then
+    curl -s $url -o $pdf
+fi
+
+if ! test -f "$pdf" ; then
+ echo "Cannot find $pdf file" > /dev/stderr
+ exit 1
+fi
+
+
+# convert pdf to pnm
+pnmdir="pnm"
+mkdir -p $pnmdir
+pdftoppm -mono -r 300 -aa no -aaVector no $pdf $pnmdir/page
+
+ocrdir="ocr"
+mkdir -p $ocrdir
+
+textdir="text"
+mkdir -p $textdir
+
+#Cleanup pnm files and ocr them to text in parallel
+find $pnmdir -type f -name '*.pbm' |
+parallel -t -u "sh -c 'unpaper {} ${ocrdir}/{/.}.pbm && tesseract -l eng ${ocrdir}/{/.}.pbm ${textdir}/{/.}'"
