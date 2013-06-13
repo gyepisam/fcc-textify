@@ -1,8 +1,9 @@
 #!/bin/sh
 
+# DO NOT EDIT -- GENERATED FILE
+
 # This script initializes an Amazon EC2 instance
 # for use as a text extraction worker node.
-#
 
 # must.have.root! 
 if test $(id -u) != 0 ; then
@@ -20,6 +21,11 @@ apt-get -y upgrade
 
 apt-get install -y $PACKAGES
 
+HOME=/home/ubuntu
+USER=ubuntu
+
+cd $HOME
+
 git clone https://github.com/gyepisam/fcc-textify
 
 #Worker key
@@ -27,31 +33,33 @@ install -D -m 0600 /dev/stdin fcc-textify/auth <<EOS
 %AUTH%
 EOS
 
-install -D -m 0600 /dev/stdin fcc-textify/config <<EOS
+mode=development
+install -D -m 0600 /dev/stdin fcc-textify/config/${mode}.ini <<EOS
 [default]
-injector-queue = extraction-job-development
-collector-queue = extraction-data-development
-text-bucket = ppi-extraction-data-development
+injector-queue = extraction-job-$mode
+collector-queue = extraction-data-$mode
+text-bucket = ppi-extraction-data-$mode
 
 [aws]
 region =  us-east-1
 EOS
 
-install -D -m 0755 /dev/stdin extract-job/run <<EOS
+install -D -m 0755 /dev/stdin runit/run <<EOS
 #!/bin/sh
 
-authfile=$PWD/fcc-textify/auth
+authfile=$HOME/fcc-textify/auth
 
-env AWS_ACCESS_KEY_ID="\$(sed -n 1p \$authfile)" \
-    AWS_SECRET_ACCESS_KEY="\$(sed -n 2p \$authfile)" \
-    exec python fcc-textify/task.py extract_batch
+exec chpst env \
+  AWS_ACCESS_KEY_ID="\$(sed -n 1p \$authfile)" \
+  AWS_SECRET_ACCESS_KEY="\$(sed -n 2p \$authfile)" \
+  python $HOME/fcc-textify/task.py extract_batch
 EOS
 
-install -D -m 0755 /dev/stdin extract-job/log/run <<EOS
+install -D -m 0755 /dev/stdin runit/log/run <<EOS
 #!/bin/sh
-d=\$HOME/logs
+d=$HOME/logs
 mkdir -p \$d
 svlogd \$d
 EOS
 
-ln -s extract-job /etc/service/extract-job
+ln -s $PWD/runit /etc/service/textify
