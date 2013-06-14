@@ -33,7 +33,7 @@ install -D -m 0600 /dev/stdin fcc-textify/auth <<EOS
 %AUTH%
 EOS
 
-mode=development
+mode=%MODE%
 install -D -m 0600 /dev/stdin fcc-textify/config/${mode}.ini <<EOS
 [default]
 injector-queue = extraction-job-$mode
@@ -50,6 +50,8 @@ install -D -m 0755 /dev/stdin runit/run <<EOS
 authfile=$HOME/fcc-textify/auth
 
 exec chpst env \
+  SHELL=/bin/sh \
+  HOME=$HOME \
   AWS_ACCESS_KEY_ID="\$(sed -n 1p \$authfile)" \
   AWS_SECRET_ACCESS_KEY="\$(sed -n 2p \$authfile)" \
   python $HOME/fcc-textify/task.py extract_batch
