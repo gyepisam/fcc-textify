@@ -1,5 +1,5 @@
 *~
 config
-ec2-initialize
+ec2-initialize-*
 auth
 *.pyc
