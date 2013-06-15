@@ -21,6 +21,9 @@ apt-get -y upgrade
 
 apt-get install -y $PACKAGES
 
+# work around somebody's idea of a bad joke.
+rm -f /etc/parallel/config
+
 HOME=/home/ubuntu
 USER=ubuntu
 
@@ -44,12 +47,26 @@ text-bucket = ppi-extraction-data-$mode
 region =  us-east-1
 EOS
 
-install -D -m 0755 /dev/stdin runit/run <<EOS
+cat > /etc/rsyslog.d/60-udp-logging.conf <<'EOS'
+$ModLoad imudp
+$UDPServerAddress 127.0.0.1
+$UDPServerRun 514
+EOS
+
+reload rsyslog
+
+# run two sets of processors
+for j in 1 2 ; do
+    runitdir=textify-${j}
+    install -D -m 0755 /dev/stdin $runitdir/run <<EOS
 #!/bin/sh
 
 authfile=$HOME/fcc-textify/auth
 
+exec 2>&1
+
 exec chpst env \
+  RAILS_ENV=production \
   SHELL=/bin/sh \
   HOME=$HOME \
   AWS_ACCESS_KEY_ID="\$(sed -n 1p \$authfile)" \
@@ -57,11 +74,18 @@ exec chpst env \
   python $HOME/fcc-textify/task.py extract_batch
 EOS
 
-install -D -m 0755 /dev/stdin runit/log/run <<EOS
-#!/bin/sh
-d=$HOME/logs
-mkdir -p \$d
-exec svlogd \$d
+    #consolidate logs to syslog
+    logdir=$HOME/logs-$j
+    SPACE=' '
+    install -D -m 0755 /dev/stdin $logdir/config <<EOS
+ptextify-${j}:$SPACE
+U127.0.0.1
 EOS
 
-ln -s $PWD/runit /etc/service/textify
+    install -D -m 0755 /dev/stdin $runitdir/log/run <<EOS
+#!/bin/sh
+exec svlogd $logdir
+EOS
+
+    ln -s $PWD/$runitdir /etc/service/textify-$j
+done

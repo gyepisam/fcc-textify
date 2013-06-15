@@ -1,5 +1,6 @@
 *~
 config
-ec2-initialize-*
+ec2-initialize-production
+ec2-initialize-development
 auth
 *.pyc

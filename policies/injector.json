@@ -1,0 +1,12 @@
+{
+  "Statement": [{
+      "Action": ["sqs:GetQueueAttributes", "sqs:ReceiveMessage", "sqs:SendMessage"],
+      "Effect": "Allow",
+      "Resource": "arn:aws:sqs:*:*:extraction-job-production"
+    },
+    {
+      "Action": ["sqs:ListQueues"],
+      "Effect": "Allow",
+      "Resource": "*"
+    }]
+}

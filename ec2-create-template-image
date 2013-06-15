@@ -1,0 +1,61 @@
+#!/usr/bin/perl
+
+# Create a new EC2 image after based on a user-data script customized instance.
+# Author: Gyepi Sam
+
+use POSIX qw(strftime);
+
+my ($ami, $key, $userdata) = @ARGV;
+
+my $token = `openssl rand -hex 16`;
+chomp $token;
+
+my $name = strftime q{fcc textify %F}, localtime
+my $instance;
+
+while (1) {
+  my $data=`ec2-run-instances $ami -k $key -t t1.micro -f $userdata --client-token $token`;
+  if ($data =~ /running\s+$key/) {
+    if ($data =~ /INSTANCE\s+(\S+)/) {
+      $instance = $1;
+      last;
+    } else {
+      warn "cannot extract id from running instance data: $data\n";
+    }
+  }
+  warn "waiting for instance initialization\n";
+  sleep 15;
+}
+
+while (1) {
+  my $data = `ec2-get-console-output $instance 2>&1`;
+  if ($data =~ /Cloud-init.+finished.+at/) {
+    last;
+  } else {
+    warn "waiting for template instance configuration\n";
+    sleep 15
+  }
+}
+
+my $data = `ec2-create-image -n "$name" $instance`;
+
+if ($data =~ /IMAGE\s+(\S+)/) {
+  my $image = $1;
+  while (1) {
+    $data = `ec2-describe-images $image`;
+    if ($data =~ /available/) {
+      last;
+    } else {
+      warn "waiting for new image creation\n";
+      sleep 15;
+    }
+  }
+
+  system("ec2-terminate-instances $instance");
+
+  warn("Create new image: $image\n");
+
+} else {
+  warn "cannot get image id from $data\n";
+  exit 1;
+}

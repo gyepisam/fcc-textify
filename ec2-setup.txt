@@ -1,0 +1,80 @@
+Users:
+
+The infrastructure requires three types of AWS users:
+
+injectors - add new jobs to queue
+workers - perform text extraction
+collectors - update database with extraction results
+
+To allow for simpler management, each category of users belongs
+to an eponymous group. To allow for separate development and production
+roles, there are two sets of each group, with names suffixed by role.
+
+1. Create groups
+
+    iam-groupcreate injectors-production
+    iam-groupcreate workers-production
+    iam-groupcreate collectors-production
+
+2. Create users for each group
+
+    iam-usercreate -u injector-production-0
+    iam-usercreate -u worker-production-0
+    iam-usercreate -u collector-production-0
+
+3. Add users to appropriate groups 
+
+    iam-groupadduser -g collectors-production -u collector-production-0
+    iam-groupadduser -g injectors-production -u injector-production-0
+    iam-groupadduser -g workers-production -u worker-production-0
+
+4. Generate keys for each user
+
+    #in fcc-textify directory
+    mkdir -p auth/production
+
+    iam-useraddkey -u injector-production-0 >  auth/production/injector.key
+    iam-useraddkey -u worker-production-0 >  auth/production/worker.key
+    iam-useraddkey -u collector-production-0 >  auth/production/collector.key
+
+5. Define access policies for each role
+
+   iam-groupuploadpolicy -g injectors-production -p injectors-production-access -f policies/injector.json
+   iam-groupuploadpolicy -g workers-production -p workers-production-access -f policies/worker.json   
+   iam-groupuploadpolicy -g collectors-production -p collectors-production-access -f policies/collector.json
+
+# Nodes
+
+Text extraction requires one or more worker nodes, depending on the number of files to be converted.
+The approach taken here is to define a template instance from which all workers are run. This
+method leads to faster and more reliable startups. There is a small added cost for storing
+the template, but this can be avoided by deleting the template at the end of each run and
+recreating it anew when necessary. Since the process is automated, this is not much of a problem.
+
+1. Create an ssh key pair for managing nodes. If you already have a pair, skip this step.
+
+    
+    KEY=$USER@ec2       # Key name
+    ssh-keygen -t rsa -b 2048 -C $KEY -f .ssh/$USER@ec2
+
+2. Register public key
+
+    ec2-import-keypair $KEY --public-key-file .ssh/${KEY}.pub
+
+3. Create a template image
+
+   AMI=ami-f3d1bb9a  # Ubuntu 13.04 64 bit ebs
+   USERDATA=ec2-initialize  # you have to write this script,
+                            # which customizes the instance however you need.
+                            # See example in repository.
+                            
+   create-template-image $AMI $KEY $USERDATA 
+
+4. Run an instances based on the template image
+
+    use ec2-describe-images to find the newly created image
+    and run an instance:
+
+    TYPE=t1.micro           #pick appropriate size
+
+    ec2-run-instances $AMI -k $KEY -t $TYPE 

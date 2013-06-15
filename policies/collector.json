@@ -1,0 +1,32 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:sqs:*:*:extraction-data-production"
+    },
+    {
+      "Action": ["sqs:ListQueues"],
+      "Effect": "Allow",
+      "Resource": "*"
+    },
+    {
+      "Action": [
+        "s3:GetObject",
+        "s3:DeleteObject"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:s3:::ppi-extraction-data-production/*"
+    },
+    {
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:s3:::ppi-extraction-data-production"
+    }
+  ]
+}
