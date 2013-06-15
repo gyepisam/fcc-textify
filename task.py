@@ -94,7 +94,8 @@ def extract(limit=None, queue_results=True):
         out_queue = get_queue(sqs_conn, config('default.collector-queue'))
 
     s3_conn = get_s3_connection()
-    bucket = s3_conn.get_bucket(config('default.text-bucket'), validate=False)
+    text_bucket = s3_conn.get_bucket(config('default.text-bucket'), validate=False)
+    image_bucket = s3_conn.get_bucket(config('default.image-bucket'), validate=False)
 
     counter = 0
     if limit:
@@ -112,12 +113,12 @@ def extract(limit=None, queue_results=True):
             warn("cannot extract data from", m[0].get_body())
             continue
 
-        docid = data['filing_doc_id']
-        workdir = tempfile.mkdtemp(prefix="extraction-", suffix='-' + str(docid))
+        num = str(data['fcc_num'])
+        workdir = tempfile.mkdtemp(prefix="extraction-", suffix='-' + num)
         script = path.join(path.abspath(path.dirname(sys.argv[0])), 'extract')
         rc = subprocess.call(['/bin/sh', script, data['url'], workdir])
 
-        result = {'filing_doc_id': docid, 'fcc_num': data['fcc_num'] }
+        result = {'filing_doc_id': data['filing_doc_id'], 'fcc_num': num }
 
         if rc != 0:
             result['status'] = 'failed'
@@ -126,12 +127,21 @@ def extract(limit=None, queue_results=True):
             content = []
             pages = []
             offset = 0
-          
-            for name in glob.glob(workdir  + '/text/*.txt'):
+
+            for name in glob.iglob(workdir + '/jpeg/page-*.jpg'):
+                
+                m = re.search('page-(\d+).jpg', name)
+                if not m:
+                    raise Exception("cannot extract page number from filename: " + name)
+
+                image_key = Key(image_bucket)
+                image_key.key = "%s/page-%s.jpg" % (num, int(m.group(1))) # force page number to unpadded int.
+                image_key.set_contents_from_filename(name)
+
+            for name in glob.iglob(workdir + '/text/*.txt'):
                 m = re.search('page-(\d+).txt', name)
                 if not m:
-                    warn("Cannot extract page number from filename", name)
-                    sys.exit(1)
+                    raise Exception("Cannot extract page number from filename: " + name)
 
                 f = open(name)
                 txt = f.read()
@@ -144,8 +154,8 @@ def extract(limit=None, queue_results=True):
                 f.close()
            
             if len(pages):
-                content_key = Key(bucket)
-                result['content_key'] = content_key.key = "%s.txt" % (docid,) 
+                content_key = Key(text_bucket)
+                result['content_key'] = content_key.key = "%s.txt" % (data['fcc_num'],) 
 
                 for name, value in result.iteritems():
                     content_key.set_metadata(name, str(value))
@@ -159,6 +169,7 @@ def extract(limit=None, queue_results=True):
                 result['pages'] = pages
 
                 content_key.set_contents_from_string(''.join(content))
+            
 
         warn("extract output", result)
 
@@ -188,7 +199,7 @@ def update_document(data, content=None):
 
     if data.get('status') == 'public':
         #TODO: avoid doing repeated work. Probably easiest to ignore
-        #  use dedicted buckets for batch and online extraction.
+        #  use dedicated buckets for batch and online extraction.
         cur.execute("update filing_docs set status = 'public' where id = %s", (data['filing_doc_id'],))
 
         if 'pages' in data:
@@ -264,7 +275,7 @@ def collect(limit=None):
                 continue
 
             update_document(data, content)
-            content_key.delete()
+            #content_key.delete()
             sqs_conn.delete_message(queue, msg)
             
             msgcount += 1
