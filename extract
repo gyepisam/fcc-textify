@@ -22,6 +22,9 @@ if ! test -f "$pdf" ; then
  exit 1
 fi
 
+# make image pages
+mkdir jpeg 
+pdftocairo -jpeg $pdf jpeg/page
 
 # convert pdf to pnm
 pnmdir="pnm"
@@ -36,4 +39,4 @@ mkdir -p $textdir
 
 #Cleanup pnm files and ocr them to text in parallel
 find $pnmdir -type f -name '*.pbm' |
-parallel -t -u "sh -c 'unpaper {} ${ocrdir}/{/.}.pbm && tesseract -l eng ${ocrdir}/{/.}.pbm ${textdir}/{/.}'"
+parallel -u "sh -c 'unpaper {} ${ocrdir}/{/.}.pbm && tesseract -l eng ${ocrdir}/{/.}.pbm ${textdir}/{/.}'"
