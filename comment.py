@@ -35,6 +35,11 @@ def parse_comment(url):
     data = [comment, documents]
 
     try:
+        try:
+            comment['fcc_num'] = re.search('id=(\d+)$', url).group(1)
+        except:
+            warn("comment url does not match expected ...id=XXX format", url)
+
         page = html.parse(url)
 
         # Grab all items in data section
@@ -86,7 +91,7 @@ def parse_comment(url):
     return data
 
 
-def import_comment(url):
+def import_comment(proceeding_id, url):
     """
     The contents of url is imported into the filings table and the filing_docs table.
     If the record is not new,  the insert fails with a duplicate error, which causes the attempt to be abandonded.
@@ -103,6 +108,7 @@ def import_comment(url):
         return
     
     try:
+        filing.update(proceeding_id=proceeding_id)
         cur.execute(*db.dict_to_sql_insert("filings", filing))
     except Exception as e:
         if re.match('ERROR:\s+duplicate', e.pgerror):
@@ -114,7 +120,7 @@ def import_comment(url):
         filing_id = cur.fetchone()
 
         for doc in documents:
-            doc['filing_id'] = filing_id
+            doc.update(filing_id=filing_id)
             try:
                 cur.execute(*db.dict_to_sql_insert("filing_docs", doc))
             except Exception as e:
