@@ -41,10 +41,11 @@ install -D -m 0600 /dev/stdin fcc-textify/config/${mode}.ini <<EOS
 [default]
 injector-queue = extraction-job-$mode
 collector-queue = extraction-data-$mode
-text-bucket = ppi-extraction-data-$mode
+text-bucket = ppi-extraction-text-$mode
+image-bucket = ppi-extraction-image-$mode
 
 [aws]
-region =  us-east-1
+region = us-east-1
 EOS
 
 cat > /etc/rsyslog.d/60-udp-logging.conf <<'EOS'
