@@ -23,16 +23,9 @@ Once a day to fetch new comments for all currently open proceedings.
 
 Invoke
 
-    python comments.py run
-
-once a day to download and extract new comment data.
-
-Invoke
-
     run-task auth/production/injector inject 
 
 once an hour to queue documents into the ocr system.
-
 
 Invoke
 
@@ -42,7 +35,8 @@ Invoke
 Once an hour or more frequently to update the database with
 processed data.
 
-The actual extraction occurs on extraction nodes
+The actual extraction occurs on extraction nodes, which are configured
+to run automatically
 
 On an extraction node, invoke
 
