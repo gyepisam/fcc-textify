@@ -97,7 +97,7 @@ def import_comments():
 
     conn = db.connection()
     cur = conn.cursor()
-    cur.execute("SELECT id, number FROM proceedings where status = 'Open'")
+    cur.execute("SELECT id as proceeding_id, number FROM proceedings where status = 'Open'")
 
     try:
         proceedings = cur.fetchall()
@@ -107,9 +107,9 @@ def import_comments():
 
     conn.commit()
 
-    for proc_id, number in proceedings:
+    for proceeding_id, number in proceedings:
         for url in parse_proceeding(number):
-            comment.import_comment(url)
+            comment.import_comment(proceeding_id, url)
 
     conn.close()
 
