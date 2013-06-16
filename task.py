@@ -20,6 +20,7 @@ import boto.sqs
 from boto.sqs.message import Message
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
+import boto.exception
 
 from utils import *
 import db
@@ -60,26 +61,49 @@ def dict_to_msg(data):
 def msg_to_dict(msg):
     return json.loads(msg.get_body())
 
-def inject(limit=None):
-    """Submit extraction tasks to the queue.
-       This part runs on the local machine."""
 
+def inject_by_query(query):
+    """Inject documents based on query results"""
     conn = db.connection()
     cur = conn.cursor()
 
     sqs_conn = get_sqs_connection()
     queue = get_queue(sqs_conn, config('default.injector-queue'))
     
-    query = "SELECT id, fcc_num, url FROM filing_docs WHERE status = 'new'"
-    if limit:
-        query = query + " LIMIT %d" % (int(limit),)
 
     cur.execute(query)
 
     for filing_doc_id, fcc_num, url in cur:
         queue.write(dict_to_msg(dict(filing_doc_id=filing_doc_id, fcc_num=fcc_num, url=url)))  #TODO batch sends
 
+    conn.commit()
     conn.close()
+
+def inject(limit=None):
+    """Submit extraction tasks to the queue.
+       This part runs on the local machine."""
+
+    if limit:
+        limit_phrase =  "LIMIT %d" % (int(limit),)
+    else:
+        limit_phrase = ""
+
+    query = """
+            WITH target_rows AS (
+                SELECT id FROM filing_docs 
+                WHERE status = 'new' OR
+                (status = 'queued' AND extract('day' from current_date - updated_at) > 1)
+                %s
+            )
+            UPDATE filing_docs SET status = 'queued' WHERE id IN (SELECT id FROM target_rows)
+            RETURNING id, fcc_num, url
+            """ % (limit_phrase,)
+
+    return inject_by_query(query)
+
+def inject_number(fcc_num):
+    """Injects a specific document into the queue"""
+    return inject_by_query("select id, fcc_num, url from filing_docs where fcc_num = '%s'" % (fcc_num,))
 
 def extract(limit=None, queue_results=True):
     """Extract texts of pdf files specified in queue.
@@ -106,6 +130,9 @@ def extract(limit=None, queue_results=True):
         if not len(m):
             continue
 
+        sqs_conn.delete_message(in_queue, m[0])
+
+            
         try:
             data = msg_to_dict(m[0])
             warn("extract: input", data)
@@ -113,7 +140,13 @@ def extract(limit=None, queue_results=True):
             warn("cannot extract data from", m[0].get_body())
             continue
 
+
+
         num = str(data['fcc_num'])
+        keyname = num + ".txt"
+        if text_bucket.get_key(keyname):
+            continue
+
         workdir = tempfile.mkdtemp(prefix="extraction-", suffix='-' + num)
         script = path.join(path.abspath(path.dirname(sys.argv[0])), 'extract')
         rc = subprocess.call(['/bin/sh', script, data['url'], workdir])
@@ -154,22 +187,39 @@ def extract(limit=None, queue_results=True):
                 f.close()
            
             if len(pages):
-                content_key = Key(text_bucket)
-                result['content_key'] = content_key.key = "%s.txt" % (data['fcc_num'],) 
+
+                text_bucket = s3_conn.get_bucket(config('default.text-bucket'), validate=False)
+                content_key = text_bucket.new_key(keyname)
+
+                result.update(content_key=keyname, pagecount=len(pages))
 
                 for name, value in result.iteritems():
                     content_key.set_metadata(name, str(value))
-
-                content_key.set_metadata('pagecount', str(len(pages)))
 
                 for idx, page in enumerate(pages):
                     for name, value in page.iteritems():
                         content_key.set_metadata('page.%d.%s' % (idx, name), str(value))
 
                 result['pages'] = pages
+                content_str = ''.join(content)
 
-                content_key.set_contents_from_string(''.join(content))
-            
+                try:
+                    content_key.set_contents_from_string(content_str)
+                except boto.exception.S3ResponseError as e:
+                        try:
+                            metadata = text_bucket.new_key("%s.meta" % (data['fcc_num'],))
+                            metadata.set_contents_from_string(json.dumps(result))
+                        except Exception as e:
+                            warn("Failed to store metadata", e)
+                        else:
+                            try:
+                                content_key = text_bucket.new_key(keyname)
+                                content_key.set_metadata('metadata', metadata.key)
+                                content_key.set_contents_from_string(content_str)
+                            except Exception as e:
+                                warn("failed to store text (again!)", data, e)
+                except Exception as e:
+                   warn("unhandled error #2", e)
 
         warn("extract output", result)
 
