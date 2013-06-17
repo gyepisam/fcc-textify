@@ -56,8 +56,8 @@ EOS
 
 reload rsyslog
 
-# run two sets of processors
-for j in 1 2 ; do
+# run N sets of processors
+for j in 1 2; do
     runitdir=textify-${j}
     install -D -m 0755 /dev/stdin $runitdir/run <<EOS
 #!/bin/sh
