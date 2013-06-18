@@ -28,6 +28,7 @@ import dictconfig
 
 
 CONFIG = None
+VERBOSE = False
 
 def config(key):
     global CONFIG
@@ -144,6 +145,14 @@ def extract(limit=None, queue_results=True):
 
         num = str(data['fcc_num'])
         keyname = num + ".txt"
+
+        #TODO: Optimize this by providing a list of keys to each script
+        #      instance. A user-data url to a file would work.
+        #      While it would be simpler to provide the data directly through
+        #      user data, there's a limit on the size of that data.
+        #      See sqlite3 module for an in memory database.
+        #      Probably simplest to use a cache module.
+        #      bonus if it knows how to prime from a disk file.
         if text_bucket.get_key(keyname):
             continue
 
@@ -247,29 +256,49 @@ def update_document(data, content=None):
     conn = db.connection()
     cur = conn.cursor()
 
-    if data.get('status') == 'public':
+    filing_doc_id = data['filing_doc_id']
+
+    cur.execute("select count(*) from filing_docs where id = %s and status = 'public'",
+                (filing_doc_id,))
+
+    if cur.rowcount == 1:
+        return
+
+    if data.get('status', 'public') == 'public':
         #TODO: avoid doing repeated work. Probably easiest to ignore
         #  use dedicated buckets for batch and online extraction.
-        cur.execute("update filing_docs set status = 'public' where id = %s", (data['filing_doc_id'],))
+        cur.execute("update filing_docs set status = 'public', pagecount = %s where id = %s",
+                    (data['pagecount'], filing_doc_id))
 
         if 'pages' in data:
             if not content:
-                raise Exception("content is unexpectedly empty for data: %s" % (str(data),))
+                size = 0
+
+                for page in data['pages']:
+                    size += int(page['size'])
+
+                if size > 0:
+                    raise Exception("content is unexpectedly empty for data: %s" % (str(data),))
+
+            cur.execute("delete from doc_pages where filing_doc_id = %s",
+                    (filing_doc_id,))
 
             for page in data['pages']:
-                offset, size = page['offset'], page['size']
+                offset, size = int(page['offset']), int(page['size'])
                 pagetext = content[offset:offset+size]
                 wordcount = len(pagetext.split(' ')) #roughly
-                record = dict(filing_doc_id=data['filing_doc_id'],
+                record = dict(filing_doc_id=filing_doc_id,
                       pagenumber=page['number'],
                       pagetext=pagetext,
                       wordcount=wordcount)
 
                 cur.execute(*db.dict_to_sql_insert('doc_pages', record))
     else:
-        cur.execute("update filing_docs set status = 'failed' where id = %s", (data['filing_doc_id'],))
+        cur.execute("update filing_docs set status = 'failed' where id = %s", (filing_doc_id,))
 
-    warn("updated", data)
+    if VERBOSE:
+        warn("updated", data)
+
     conn.commit()
         
 def collect(limit=None):
@@ -351,36 +380,57 @@ def collect_batch(limit=None):
     if limit:
         limit = int(limit)
 
+    counter = 0
 
-    for bucket_key in bucket.list():
+    for entry in bucket.list():
         
-        key = bucket.get_key(bucket_key.key) # need do do a head request to get metadata
+        if entry.key.endswith('.meta'):
+            continue
 
-        data = {}
+        if limit:
+            counter += 1
+            if counter > limit:
+                break
 
-        for name in ('filing_doc_id', 'fcc_num', 'pagecount'):
-            data[name] = key.get_metadata(name)
-   
-        try:
-            data['pagecount'] = int(data['pagecount'])
-        except:
-            data['pagecount'] = 0
+        key = bucket.get_key(entry.key) # must do a HEAD request to get metadata
 
-        pages = []
-        for idx in range(data['pagecount']):
-            page = {}
-            for name in ('number', 'size', 'offset'):
-                page[name] = key.get_metadata('page.%d.%s' % (idx, name))
-            pages.append(page)
+        metadata_key = key.get_metadata('metadata')
 
-        if len(pages):
-            data['pages'] = pages
+        if metadata_key:
+            o = bucket.new_key(metadata_key)
+            try:
+                data = json.loads(o.get_contents_as_string())
+            except Exception as e:
+                warn("cannot fetch metadata", metadata_key, e)
+                continue
+            else:
+                if not data.get('pagecount'):
+                    data['pagecount'] = len(data.get('pages', []))
+        else:
+            data = {}
+            for name in ('filing_doc_id', 'fcc_num', 'pagecount'):
+                data[name] = key.get_metadata(name)
+       
+            try:
+                data['pagecount'] = int(data['pagecount'])
+            except:
+                data['pagecount'] = 0
+
+            pages = []
+            for idx in range(data['pagecount']):
+                page = {}
+                for name in ('number', 'size', 'offset'):
+                    page[name] = key.get_metadata('page.%d.%s' % (idx, name))
+                pages.append(page)
+
+            if len(pages):
+                data['pages'] = pages
        
         update_document(data, key.get_contents_as_string())
 
 if __name__ == "__main__":
     import sys
-
+    #TODO: use getopt and set VERBOSE
     try:
         action = globals()[sys.argv[1]]
     except:
