@@ -1,0 +1,12 @@
+#!/bin/sh
+
+AMI=$1
+KEY=$2
+COUNT=${3:-15}
+PRICE=${4:-0.15}
+
+ec2-request-spot-instances $AMI \
+--price $PRICE \
+--instance-count $COUNT \
+--key $KEY \
+--instance-type c1.xlarge
