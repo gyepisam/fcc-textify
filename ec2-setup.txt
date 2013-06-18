@@ -39,9 +39,9 @@ roles, there are two sets of each group, with names suffixed by role.
 
 5. Define access policies for each role
 
-   iam-groupuploadpolicy -g injectors-production -p injectors-production-access -f policies/injector.json
-   iam-groupuploadpolicy -g workers-production -p workers-production-access -f policies/worker.json   
-   iam-groupuploadpolicy -g collectors-production -p collectors-production-access -f policies/collector.json
+   iam-groupuploadpolicy -g injectors-production -p injectors-production-access -f policies/production/injector.json
+   iam-groupuploadpolicy -g workers-production -p workers-production-access -f policies/production/worker.json   
+   iam-groupuploadpolicy -g collectors-production -p collectors-production-access -f policies/production/collector.json
 
 # Nodes
 
@@ -78,3 +78,12 @@ recreating it anew when necessary. Since the process is automated, this is not m
     TYPE=t1.micro           #pick appropriate size
 
     ec2-run-instances $AMI -k $KEY -t $TYPE 
+
+5 Connect to the instance
+
+    ssh ubuntu@instance-public-dns
+
+Addenda:
+
+    a. You'll need to allow ssh access to your instances
+    b. You'll need to use ec2-describe-instances or other tool to find the public hostname
