@@ -2,14 +2,20 @@
 
 # task runner
 # call it like this
-#   run-task auth/injector.key inject 1
+#
+#   run-task auth/production/injector.key inject 1
+#
 # to inject 1 message into the jobs system.
+#
 # omit the 1 to inject all eligible messages
+#
 # call it like this to fetch extracted data
-#   run-task auth/collector.key collect 1
+#   run-task auth/development/collector.key collect 1
+#
 # call it like this to extract
 #
-#   run-task auth/worker.key extract 1
+#   run-task auth/production/worker.key extract 1
+# In all cases, the location of the auth file determines the run mode.
 auth=$1
 
 if test -z "$auth" ; then
@@ -24,6 +30,8 @@ fi
 
 shift
 
+
 env AWS_ACCESS_KEY_ID="$(sed -n 1p $auth)" \
     AWS_SECRET_ACCESS_KEY="$(sed -n 2p $auth)" \
+    RAILS_ENV=$(basename $(dirname $auth)) \
     python task.py "$@"
