@@ -258,7 +258,7 @@ def update_document(data, content=None):
 
     filing_doc_id = data['filing_doc_id']
 
-    cur.execute("select count(*) from filing_docs where id = %s and status = 'public'",
+    cur.execute("select id from filing_docs where id = %s and status = 'public'",
                 (filing_doc_id,))
 
     if cur.rowcount == 1:
