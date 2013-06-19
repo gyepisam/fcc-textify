@@ -110,7 +110,8 @@ def extract(limit=None, queue_results=True):
     """Extract texts of pdf files specified in queue.
        Result files are placed in S3, along with associated metadata.
        If queue_results is is true, result data is placed on the output queue.
-       This part runs on EC2."""
+       This part can run on EC2 instances or the local machine if it has been
+       configured."""
 
     sqs_conn = get_sqs_connection()
     in_queue = get_queue(sqs_conn, config('default.injector-queue'))
