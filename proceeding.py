@@ -31,12 +31,12 @@ Author: Gyepi Sam <self-github@gyepi.com>
 """
 
 import re
-from lxml import html
+import lxml
 from utils import *
 import db
 import comment
 
-def parse_proceeding(proceeding_num):
+def parse_proceeding_search(proceeding_num):
     """A generator that runs a search on FCC site and produces
     urls for comments and documents relating to specified proceeding number"""
 
@@ -47,7 +47,7 @@ def parse_proceeding(proceeding_num):
     try:
         url = search_url(proceeding_num)
     
-        content = html.parse(url)
+        content = lxml.html.parse(url)
     
         todo = [content] # addenda...
 
@@ -84,7 +84,7 @@ def parse_proceeding(proceeding_num):
             content = item 
         else:
             try:
-                content = html.parse(item)
+                content = lxml.html.parse(item)
             except Exception as e:
                 warn("Error fetching or parsing link", item, e)
                 continue
@@ -92,8 +92,19 @@ def parse_proceeding(proceeding_num):
         for href in content.xpath('//table[@class="dataTable"]//td/a[contains(@href, "/ecfs/comment/view")]/@href'):
             yield hostify_url(clean_url(href))
 
-def import_comments():
-    """imports all proceeding comments into filing table and documents into filing_docs table"""
+def parse_proceeding_rss(proceeding_num):
+    """Parse comment urls out of rss feed. This is faster and less resource
+       intensive and perfect for incremental updates"""
+
+    url = rss_url(proceeding_num)
+    content = lxml.etree.parse(url)
+
+    for href in content.xpath('/rss/channel/item/link/text()'):
+        yield href
+
+def import_comments(proceeding_parser):
+    """imports all proceeding comments into filing table and documents into
+       filing_docs table. proceeding_parser is either based on a search or an rss feed"""
 
     conn = db.connection()
     cur = conn.cursor()
@@ -108,10 +119,21 @@ def import_comments():
     conn.commit()
 
     for proceeding_id, number in proceedings:
-        for url in parse_proceeding(number):
+        for url in proceeding_parser(number):
             comment.import_comment(proceeding_id, url)
 
     conn.close()
+
+def import_comments_search():
+    """Imports comments based on searching for all comments. Useful for bulk
+    loading"""
+    import_comments(parse_proceeding_search)
+
+def import_comments_rss():
+    """Imports comments mentioned in RSS feed, which only covers recent items.
+       Useful for incremental updates."""
+    import_comments(parse_proceeding_rss)
+
 
 if __name__ == "__main__":
     import pprint
@@ -122,4 +144,4 @@ if __name__ == "__main__":
         pp = pprint.PrettyPrinter(indent=4)
         pp.pprint([x for x in parse_proceeding(sys.argv[2])])
     elif action == 'run':
-        import_comments()
+        import_comments_rss()
