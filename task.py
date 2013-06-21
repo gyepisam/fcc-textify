@@ -131,6 +131,7 @@ def extract(limit=None, queue_results=True):
     while True:
         m = sqs_conn.receive_message(in_queue)
         if not len(m):
+            time.sleep(5 * 60)
             continue
 
         sqs_conn.delete_message(in_queue, m[0])
@@ -368,7 +369,7 @@ def collect(limit=None):
             # no more messages.
             # wait a while then exit.
             # so the program can be restarted
-            time.sleep(30) 
+            time.sleep(30 * 60) 
             process_queue = False
 
 def collect_batch(limit=None):
