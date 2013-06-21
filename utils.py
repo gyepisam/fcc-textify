@@ -13,6 +13,9 @@ def hostify_url(url):
 def search_url(proceeding_num, pagesize=100):
 	return hostify_url("/ecfs/comment_search/execute?proceeding=%s&pageSize=%s" % (proceeding_num, pagesize))
 
+def rss_url(proceeding_num):
+    return hostify_url("/ecfs/comment_search/rss?proceeding=" + str(proceeding_num))
+
 def warn(*msg):
   """prints msg to stderr"""
   print >> sys.stderr, msg
