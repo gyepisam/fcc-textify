@@ -111,10 +111,10 @@ def import_comment(proceeding_id, url):
         filing.update(proceeding_id=proceeding_id)
         cur.execute(*db.dict_to_sql_insert("filings", filing))
     except Exception as e:
+        conn.rollback()
         if re.match('ERROR:\s+duplicate', e.pgerror):
             return
         else:
-            conn.rollback()
             warn("Error %s while importing comment: %s" % (e, url))
     else:
         filing_id = cur.fetchone()
