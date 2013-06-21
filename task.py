@@ -15,6 +15,7 @@ import subprocess
 import re
 import glob
 import shutil
+import time
 
 import boto.sqs
 from boto.sqs.message import Message
@@ -364,7 +365,10 @@ def collect(limit=None):
                 break
 
         else: # for loop
-            # no more messages
+            # no more messages.
+            # wait a while then exit.
+            # so the program can be restarted
+            time.sleep(30) 
             process_queue = False
 
 def collect_batch(limit=None):
