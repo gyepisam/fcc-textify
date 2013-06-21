@@ -12,5 +12,3 @@ python $dir/proceeding.py run
 
 # queue up documents, if any, for extraction
 sh run-task $dir/auth/production/injector.key inject
-sh run-task $dir/auth/production/worker.key extract_batch
-sh run-task $dir/auth/production/collector.key collect_batch
