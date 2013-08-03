@@ -6,12 +6,14 @@ set -e
 
 url=$1
 workdir=${2:-./}
+pdf=$3
 
 cd $workdir
 
-docid=$(echo $url|cut -f2 -d=)
-
-pdf="${docid}.pdf"
+if test -z "$pdf" ; then
+  docid=$(echo $url|cut -f2 -d=)
+  pdf="${docid}.pdf"
+fi
 
 if ! test -f $pdf ; then
     curl -s $url -o $pdf
