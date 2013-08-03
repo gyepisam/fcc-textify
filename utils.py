@@ -18,7 +18,7 @@ def rss_url(proceeding_num):
 
 def warn(*msg):
   """prints msg to stderr"""
-  print >> sys.stderr, msg
+  print >> sys.stderr, ' '.join(msg)
 
 def clean_url(url):
     """removes session id and extra spaces from url"""
