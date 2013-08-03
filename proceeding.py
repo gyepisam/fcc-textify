@@ -14,17 +14,37 @@ Search the FCC site for all proceedings we care about.
 Grab all relevant filings and add them to the table.
 Existing records will fail and new records will succeed.
 
+The initial search can be run with the command:
+
+    python proceeding.py search
+
 After the initial import, most runs will only add a few new records at a time,
 if any.
 
 It can be run once a day, perhap under cron, with the command
 
-  python .../uppd/feed/proceeding.py run
+  python proceeding.py rss 
+
+Note that the RSS feed data spans 30 days of records, so if the updates lapse
+for more than 30 days, a search update must be run (once) to catch up before
+restarting with the rss feeds.
 
 The script uses the RAILS_ENV environment variable to determine run modes
-so this should be set, either implicitly (rails runner "exec ...") or explicitly env RAILS_ENV=production.
+so this should be set, either implicitly 
+
+    rails runner "exec ..."
+    
+or explicitly
+
+    env RAILS_ENV=production ...
 
 It defaults to development when unset.
+
+This script can be run in test mode with the command
+
+    python proceeding.py test 12-375
+
+which prints out the result of parsing the rss feed for proceeding 12-375.
 
 Author: Gyepi Sam <self-github@gyepi.com>
 
@@ -138,10 +158,26 @@ def import_comments_rss():
 if __name__ == "__main__":
     import pprint
     import sys
+    
+    dry_run = False
+    proceeding_number = None
 
     action = sys.argv[1]
     if action == 'test':
-        pp = pprint.PrettyPrinter(indent=4)
-        pp.pprint([x for x in parse_proceeding(sys.argv[2])])
+        dry_run = True
+        action = 'rss'
+        proceeding_number = sys.argv[2]
     elif action == 'run':
-        import_comments_rss()
+        action = 'rss'
+
+    runner = globals().get("import_comments_" + action)
+    if runner:
+        if dry_run:
+            parser = globals()['parse_proceeding_' + action]
+            pp = pprint.PrettyPrinter(indent=4)
+            pp.pprint([x for x in parser(proceeding_number)])
+        else:
+            runner()
+    else:
+        warn("cannot understand task: " + action)
+        sys.exit(2)
