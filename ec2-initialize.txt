@@ -1,9 +1,6 @@
 #!/bin/sh
 
-# DO NOT EDIT -- GENERATED FILE
-
-# This script initializes an Amazon EC2 instance
-# for use as a text extraction worker node.
+%DO_NOT_EDIT_WARNING%
 
 # must.have.root! 
 if test $(id -u) != 0 ; then
@@ -57,7 +54,7 @@ EOS
 reload rsyslog
 
 # run N sets of processors
-for j in 1 2; do
+for j in %CONCURRENCY%; do
     runitdir=textify-${j}
     install -D -m 0755 /dev/stdin $runitdir/run <<EOS
 #!/bin/sh
