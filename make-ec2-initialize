@@ -11,10 +11,24 @@ The resulting file can be run as a user-data script or manually.
 
 use strict;
 
-my $auth = slurp(shift @ARGV);
-my $mode = shift @ARGV;
 
-my %vars = (MODE => $mode, AUTH => $auth, PACKAGES => slurp('requirements.txt'));
+my $authkey = slurp(shift @ARGV);
+my $runmode = shift @ARGV;
+
+my %vars = (MODE => $runmode, AUTH => $authkey, PACKAGES => slurp('requirements.txt'));
+
+# How many processor scripts to run concurrently?
+# Increase this value if your EC2 instances are larger than c1.xlarge
+# or you use real hardware
+$vars{CONCURRENCY} = 1;
+
+$vars{DO_NOT_EDIT_WARNING} = <<EOS;
+# DO NOT EDIT -- GENERATED FILE
+# Edit $0 and associated files instead and see the Makefile on how to re-generate this script.
+
+# This script initializes an Amazon EC2 instance
+# for use as a text extraction worker node.
+EOS
 
 my $template = slurp('ec2-initialize.txt');
 
