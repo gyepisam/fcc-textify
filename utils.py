@@ -18,10 +18,8 @@ def rss_url(proceeding_num):
 
 def warn(*msg):
   """prints msg to stderr"""
-  print >> sys.stderr, ' '.join(msg)
+  print >> sys.stderr, ' '.join([str(x) for x in msg])
 
 def clean_url(url):
     """removes session id and extra spaces from url"""
     return re.sub(';jsessionid=.+\?', '?', url).strip()
-
-  
