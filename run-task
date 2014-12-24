@@ -31,7 +31,7 @@ fi
 shift
 
 
-env AWS_ACCESS_KEY_ID="$(sed -n 1p $auth)" \
-    AWS_SECRET_ACCESS_KEY="$(sed -n 2p $auth)" \
-    RAILS_ENV=$(basename $(dirname $auth)) \
+env AWS_ACCESS_KEY_ID="$(sed -n 1p $auth)" \ # first line
+    AWS_SECRET_ACCESS_KEY="$(sed -n 2p $auth)" \ # second line
+    RAILS_ENV=$(basename $(dirname $auth)) \ # rarely used but useful.
     python $(dirname $0)/task.py "$@"
