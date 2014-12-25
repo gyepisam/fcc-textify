@@ -158,19 +158,21 @@ def import_comments_rss():
 if __name__ == "__main__":
     import pprint
     import sys
-    
-    dry_run = False
-    proceeding_number = None
 
     action = sys.argv[1]
-    if action == 'test':
-        dry_run = True
-        action = 'rss'
-        proceeding_number = sys.argv[2]
-    elif action == 'run':
+
+    dry_run = action == 'test'
+
+    if action in ('test', 'run'):
         action = 'rss'
 
+    if len(sys.argv) > 2:
+      proceeding_number = sys.argv[2]
+    else:
+      proceeding_number = None
+
     runner = globals().get("import_comments_" + action)
+
     if runner:
         if dry_run:
             parser = globals()['parse_proceeding_' + action]
