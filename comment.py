@@ -98,15 +98,15 @@ def import_comment(proceeding_id, url):
     Otherwise the associated documents, if any, are also added.
     """
 
-    conn = db.connection()
-    cur = conn.cursor()
-
     try:
         filing, documents = parse_comment(url)
     except Exception as e:
         warn("Error %s on url: %s" % (e, url))
         return
     
+    conn = db.connection()
+    cur = conn.cursor()
+
     try:
         filing.update(proceeding_id=proceeding_id)
         cur.execute(*db.dict_to_sql_insert("filings", filing))
