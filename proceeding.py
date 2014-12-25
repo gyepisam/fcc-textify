@@ -74,7 +74,7 @@ def parse_proceeding_search(proceeding_num):
         pages = [] # pages to follow and process
         cache = {} # ensure unique set
 
-        for url in content.xpath('//span[@class="pagelinks"]//a[contains(@href, "/ecfs/comment_search/paginate")]/@href'):
+        for url in content.xpath('//a[contains(@href, "/ecfs/comment_search/paginate")]/@href'):
             if not url in cache:
                 pages.append(hostify_url(url))
                 cache[url] = True
@@ -109,7 +109,7 @@ def parse_proceeding_search(proceeding_num):
                 warn("Error fetching or parsing link", item, e)
                 continue
 
-        for href in content.xpath('//table[@class="dataTable"]//td/a[contains(@href, "/ecfs/comment/view")]/@href'):
+        for href in content.xpath('//a[contains(@href, "/ecfs/comment/view")]/@href'):
             yield hostify_url(clean_url(href))
 
 def parse_proceeding_rss(proceeding_num):
