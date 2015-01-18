@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# Fetch and process new comments for all currently open proceedings.
+# This script can be run under cron once a day.
+
+mode=${1:-rss} # use search to find all documents
+# import new proceedings and links to their associated documents
+env RAILS_ENV=production python $(dirname $0)/proceeding.py ${1:-rss} 

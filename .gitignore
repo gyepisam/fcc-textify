@@ -1,4 +1,5 @@
 *~
+data/
 config
 ec2-initialize-production
 ec2-initialize-development
